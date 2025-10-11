@@ -38,6 +38,10 @@ pub enum OzzError {
     #[error("Invalid version")]
     InvalidVersion,
 
+    /// Invalid repr.
+    #[error("Invalid repr")]
+    InvalidRepr,
+
     /// Unexcepted error.
     #[error("Unexcepted error")]
     Unexcepted,
@@ -78,6 +82,10 @@ impl OzzError {
 
     pub fn is_invalid_version(&self) -> bool {
         matches!(self, OzzError::InvalidVersion)
+    }
+
+    pub fn is_invalid_repr(&self) -> bool {
+        matches!(self, OzzError::InvalidRepr)
     }
 
     pub fn is_unexcepted(&self) -> bool {
@@ -146,13 +154,13 @@ ozz_index!(i16);
 
 #[inline(always)]
 pub(crate) fn align_usize(size: usize, align: usize) -> usize {
-    assert!(align.is_power_of_two());
+    debug_assert!(align.is_power_of_two());
     (size + align - 1) & !(align - 1)
 }
 
 #[inline(always)]
 pub(crate) fn align_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
-    assert!(align.is_power_of_two());
+    debug_assert!(align.is_power_of_two());
     align_usize(ptr as usize, align) as *mut u8
 }
 
@@ -233,7 +241,7 @@ impl<'a, T: 'static + Debug + Clone> OzzBuf<T> for &'a [T] {
         'a: 'b;
 
     #[inline(always)]
-    fn buf(&self) -> Result<ObSliceRef<T>, OzzError> {
+    fn buf(&self) -> Result<ObSliceRef<'_, T>, OzzError> {
         Ok(ObSliceRef(self))
     }
 }
@@ -260,7 +268,7 @@ impl<'a, T: 'static + Debug + Clone> OzzBuf<T> for &'a mut [T] {
         'a: 'b;
 
     #[inline(always)]
-    fn buf(&self) -> Result<ObSliceRef<T>, OzzError> {
+    fn buf(&self) -> Result<ObSliceRef<'_, T>, OzzError> {
         Ok(ObSliceRef(self))
     }
 }
@@ -272,7 +280,7 @@ impl<'a, T: 'static + Debug + Clone> OzzMutBuf<T> for &'a mut [T] {
         'a: 'b;
 
     #[inline(always)]
-    fn mut_buf(&mut self) -> Result<ObSliceRefMut<T>, OzzError> {
+    fn mut_buf(&mut self) -> Result<ObSliceRefMut<'_, T>, OzzError> {
         Ok(ObSliceRefMut(self))
     }
 }
@@ -303,7 +311,7 @@ impl<T: 'static + Debug + Clone> OzzBuf<T> for Vec<T> {
     type Buf<'t> = ObSliceRef<'t, T>;
 
     #[inline(always)]
-    fn buf(&self) -> Result<ObSliceRef<T>, OzzError> {
+    fn buf(&self) -> Result<ObSliceRef<'_, T>, OzzError> {
         Ok(ObSliceRef(self.as_slice()))
     }
 }
@@ -312,7 +320,7 @@ impl<T: 'static + Debug + Clone> OzzMutBuf<T> for Vec<T> {
     type MutBuf<'t> = ObSliceRefMut<'t, T>;
 
     #[inline(always)]
-    fn mut_buf(&mut self) -> Result<ObSliceRefMut<T>, OzzError> {
+    fn mut_buf(&mut self) -> Result<ObSliceRefMut<'_, T>, OzzError> {
         Ok(ObSliceRefMut(self))
     }
 }
@@ -325,7 +333,7 @@ impl<T: 'static + Debug + Clone> OzzBuf<T> for Rc<RefCell<Vec<T>>> {
     type Buf<'t> = ObCellRef<'t, T>;
 
     #[inline(always)]
-    fn buf(&self) -> Result<ObCellRef<T>, OzzError> {
+    fn buf(&self) -> Result<ObCellRef<'_, T>, OzzError> {
         Ok(ObCellRef(self.borrow()))
     }
 }
@@ -345,7 +353,7 @@ impl<T: 'static + Debug + Clone> OzzMutBuf<T> for Rc<RefCell<Vec<T>>> {
     type MutBuf<'t> = ObCellRefMut<'t, T>;
 
     #[inline(always)]
-    fn mut_buf(&mut self) -> Result<ObCellRefMut<T>, OzzError> {
+    fn mut_buf(&mut self) -> Result<ObCellRefMut<'_, T>, OzzError> {
         Ok(ObCellRefMut(self.borrow_mut()))
     }
 }
@@ -376,7 +384,7 @@ impl<T: 'static + Debug + Clone> OzzBuf<T> for Arc<RwLock<Vec<T>>> {
     type Buf<'t> = ObRwLockReadGuard<'t, T>;
 
     #[inline(always)]
-    fn buf(&self) -> Result<ObRwLockReadGuard<T>, OzzError> {
+    fn buf(&self) -> Result<ObRwLockReadGuard<'_, T>, OzzError> {
         match self.read() {
             Ok(guard) => Ok(ObRwLockReadGuard(guard)),
             Err(_) => Err(OzzError::LockPoison),
@@ -399,7 +407,7 @@ impl<T: 'static + Debug + Clone> OzzMutBuf<T> for Arc<RwLock<Vec<T>>> {
     type MutBuf<'t> = ObRwLockWriteGuard<'t, T>;
 
     #[inline(always)]
-    fn mut_buf(&mut self) -> Result<ObRwLockWriteGuard<T>, OzzError> {
+    fn mut_buf(&mut self) -> Result<ObRwLockWriteGuard<'_, T>, OzzError> {
         match self.write() {
             Ok(guard) => Ok(ObRwLockWriteGuard(guard)),
             Err(_) => Err(OzzError::LockPoison),
@@ -441,4 +449,38 @@ pub type OzzArcBuf<T> = Arc<RwLock<Vec<T>>>;
 #[inline]
 pub fn ozz_arc_buf<T>(v: Vec<T>) -> OzzArcBuf<T> {
     Arc::new(RwLock::new(v))
+}
+
+#[cfg(feature = "rkyv")]
+pub(crate) trait SliceRkyvExt<T, D>
+where
+    T: rkyv::Archive,
+    T::Archived: rkyv::Deserialize<T, D>,
+    D: rkyv::rancor::Fallible + ?Sized,
+{
+    fn copy_from_deserialize(
+        &mut self,
+        deserializer: &mut D,
+        avec: &rkyv::vec::ArchivedVec<T::Archived>,
+    ) -> Result<(), D::Error>;
+}
+
+impl<T, D> SliceRkyvExt<T, D> for [T]
+where
+    T: rkyv::Archive,
+    T::Archived: rkyv::Deserialize<T, D>,
+    D: rkyv::rancor::Fallible + ?Sized,
+{
+    #[inline(always)]
+    fn copy_from_deserialize(
+        &mut self,
+        deserializer: &mut D,
+        avec: &rkyv::vec::ArchivedVec<T::Archived>,
+    ) -> Result<(), D::Error> {
+        use rkyv::Deserialize;
+        for (i, item) in avec.iter().enumerate() {
+            self[i] = item.deserialize(deserializer)?;
+        }
+        Ok(())
+    }
 }
