@@ -128,7 +128,7 @@ where
 }
 
 pub type BlendingJobRef<'t> = BlendingJob<&'t Skeleton, &'t [SoaTransform], &'t mut SoaTransform>;
-pub type BlendingJobRc<'t> = BlendingJob<Rc<Skeleton>, Rc<RefCell<Vec<SoaTransform>>>, Rc<RefCell<Vec<SoaTransform>>>>;
+pub type BlendingJobRc = BlendingJob<Rc<Skeleton>, Rc<RefCell<Vec<SoaTransform>>>, Rc<RefCell<Vec<SoaTransform>>>>;
 pub type BlendingJobArc = BlendingJob<Arc<Skeleton>, Arc<RwLock<Vec<SoaTransform>>>, Arc<RwLock<Vec<SoaTransform>>>>;
 
 impl<S, I, O> Default for BlendingJob<S, I, O>
