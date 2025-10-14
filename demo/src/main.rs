@@ -4,10 +4,10 @@ mod playback;
 mod root_motion;
 mod two_bone_ik;
 
-use bevy::pbr::NotShadowCaster;
+use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
-use bevy::render::mesh::PrimitiveTopology;
-use bevy::render::render_asset::RenderAssetUsages;
+use bevy::mesh::PrimitiveTopology;
+use bevy::asset::RenderAssetUsages;
 use bevy::tasks::futures_lite::future;
 use bevy::tasks::{self, AsyncComputeTaskPool, Task};
 
@@ -131,6 +131,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
             color: Color::WHITE,
             illuminance: 10000.0,
             shadows_enabled: true,
+            affects_lightmapped_mesh_diffuse: true,
             shadow_depth_bias: 0.05,
             shadow_normal_bias: 0.9,
         },
