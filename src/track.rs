@@ -109,6 +109,15 @@ impl TrackValue for Quat {
     }
 }
 
+/// Track meta in `Archive`.
+#[derive(Debug)]
+pub struct TrackMeta {
+    pub tag: String,
+    pub version: u32,
+    pub key_count: u32,
+    pub name_len: u32,
+}
+
 /// Runtime user-channel track data.
 ///
 /// Keyframe ratios, values and interpolation mode are all store as separate buffers in order
@@ -151,36 +160,53 @@ impl<V: TrackValue> Track<V> {
             name: String::new(),
         })
     }
-
-    /// Reads an `Track` from an `Archive`.
-    pub fn from_archive(archive: &mut Archive<impl Read>) -> Result<Track<V>, OzzError> {
-        if archive.read_tag()? != Self::tag() {
-            return Err(OzzError::InvalidTag);
-        }
+    
+    /// Reads a `TrackMeta` from a reader.
+    pub fn read_meta(archive: &mut Archive<impl Read>) -> Result<TrackMeta, OzzError> {
+        let tag = archive.read_tag()?;
         if archive.read_version()? != Self::version() {
             return Err(OzzError::InvalidVersion);
         }
-
         let key_count: u32 = archive.read()?;
         let name_len: u32 = archive.read()?;
 
-        let ratios: Vec<f32> = archive.read_vec(key_count as usize)?;
-        let values: Vec<V> = archive.read_vec(key_count as usize)?;
-        let steps: Vec<u8> = archive.read_vec((key_count + 7) as usize / 8)?;
+        Ok(TrackMeta {
+            tag,
+            version: Self::version(),
+            key_count,
+            name_len,
+        })
+    }
+
+    /// Reads an `Track` from an `Archive`.
+    pub fn from_archive_with_meta(archive: &mut Archive<impl Read>, meta: TrackMeta) -> Result<Track<V>, OzzError> {
+        if meta.tag != V::tag() {
+            return Err(OzzError::InvalidTag);
+        }
+
+        let ratios: Vec<f32> = archive.read_vec(meta.key_count as usize)?;
+        let values: Vec<V> = archive.read_vec(meta.key_count as usize)?;
+        let steps: Vec<u8> = archive.read_vec((meta.key_count + 7) as usize / 8)?;
 
         let mut name = String::new();
-        if name_len != 0 {
-            let buf = archive.read_vec(name_len as usize)?;
+        if meta.name_len != 0 {
+            let buf = archive.read_vec(meta.name_len as usize)?;
             name = String::from_utf8(buf).map_err(|e| e.utf8_error())?;
         }
 
         Ok(Track {
-            key_count,
+            key_count: meta.key_count,
             ratios,
             values,
             steps,
             name,
         })
+    }
+
+    /// Reads an `Track` from an `Archive`.
+    pub fn from_archive(archive: &mut Archive<impl Read>) -> Result<Track<V>, OzzError> {
+        let meta = Self::read_meta(archive)?;
+        Self::from_archive_with_meta(archive, meta)
     }
 
     /// Reads an `Track` from a file path.

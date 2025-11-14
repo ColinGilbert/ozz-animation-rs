@@ -359,8 +359,7 @@ impl Animation {
     }
 
     /// Reads an `Animation` from an `Archive`.
-    pub fn from_archive(archive: &mut Archive<impl Read>) -> Result<Animation, OzzError> {
-        let meta = Animation::read_meta(archive)?;
+    pub fn from_archive_with_meta(archive: &mut Archive<impl Read>, meta: AnimationMeta) -> Result<Animation, OzzError> {
         let mut animation = Animation::new(meta);
 
         archive.read_slice(animation.timepoints_mut())?;
@@ -405,6 +404,12 @@ impl Animation {
         animation.s_iframe_interval = archive.read()?;
         archive.read_slice(animation.scales_mut())?;
         Ok(animation)
+    }
+
+    /// Reads an `Animation` from an `Archive`.
+    pub fn from_archive(archive: &mut Archive<impl Read>) -> Result<Animation, OzzError> {
+        let meta = Animation::read_meta(archive)?;
+        Animation::from_archive_with_meta(archive, meta)
     }
 
     /// Reads an `Animation` from a file path.
