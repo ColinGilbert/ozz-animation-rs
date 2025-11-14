@@ -121,8 +121,7 @@ impl Skeleton {
     }
 
     /// Reads a `Skeleton` from a reader.
-    pub fn from_archive(archive: &mut Archive<impl Read>) -> Result<Skeleton, OzzError> {
-        let meta = Skeleton::read_meta(archive, false)?;
+    pub fn from_archive_with_meta(archive: &mut Archive<impl Read>, meta: SkeletonMeta) -> Result<Skeleton, OzzError> {
         let mut skeleton = Skeleton::new(meta);
 
         let _char_count: u32 = archive.read()?;
@@ -133,6 +132,12 @@ impl Skeleton {
         archive.read_slice(skeleton.joint_parents_mut())?;
         archive.read_slice(skeleton.joint_rest_poses_mut())?;
         Ok(skeleton)
+    }
+
+    /// Reads a `Skeleton` from a reader.
+    pub fn from_archive(archive: &mut Archive<impl Read>) -> Result<Skeleton, OzzError> {
+        let meta = Skeleton::read_meta(archive, false)?;
+        Skeleton::from_archive_with_meta(archive, meta)
     }
 
     /// Reads a `Skeleton` from a file.
