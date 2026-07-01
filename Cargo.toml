@@ -36,6 +36,6 @@ wasm-bindgen = { version = "0.2", optional = true }
 [dev-dependencies]
 getrandom = { version = "0.4", features = ["wasm_js"] }
 miniz_oxide = "0.9"
-rand = "0.10"
+rand = { version = "0.10", feature = [:thread_rng"] }
 serde_json = "1.0"
 wasm-bindgen-test = "0.3"
