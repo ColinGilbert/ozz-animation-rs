@@ -9,6 +9,7 @@
 //! runtime, but rewrite the full runtime library in rust. So it can be used in network game scenarios, such as
 //! lock-step networking synchronize.
 //!
+#![feature(portable_simd)]
 //! ```no_run
 //! use glam::Mat4;
 //! use ozz_animation_rs::*;
@@ -45,7 +46,6 @@
 //! ```
 //!
 
-#![feature(portable_simd)]
 #![allow(unexpected_cfgs)] // TODO: Upgrade rkyv to 0.8
 
 pub mod animation;
