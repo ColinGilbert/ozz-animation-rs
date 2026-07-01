@@ -23,8 +23,9 @@ nodejs = ["wasm", "dep:js-sys", "dep:wasm-bindgen"]
 [dependencies]
 bimap = { version = "0.6" }
 bytecheck = { version = "0.8", optional = true, default-features = false }
-glam = { version = "0.30", features = [ "core-simd", "libm" ] }
-glam-ext = { version = "0.3.2", features = [ "core-simd", "libm" ] }
+glam = { version = "0.33", features = [ "core-simd", "libm" ] }
+glam-ext = { git = "https://github.com/colingilbert/glam-ext.git", branch = "master", features = [ "core-simd", "libm" ] }
+#glam-ext = { version = "0.3.2", features = [ "core-simd", "libm" ] }
 js-sys = { version = "0.3", optional = true }
 rkyv = { version = "0.8", optional = true }
 serde = { version= "1", optional = true, features = [ "serde_derive" ] }
@@ -33,8 +34,8 @@ thiserror = "2"
 wasm-bindgen = { version = "0.2", optional = true }
 
 [dev-dependencies]
-getrandom = { version = "0.2", features = ["js"] }
-miniz_oxide = "0.8"
-rand = "0.8"
+getrandom = { version = "0.4", features = ["wasm_js"] }
+miniz_oxide = "0.9"
+rand = "0.10"
 serde_json = "1.0"
 wasm-bindgen-test = "0.3"
